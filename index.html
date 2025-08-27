@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>UNIKAT — Acid Breakout (v6.4)</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root { --brand:#EC4848; --bg:#000; --fg:#fff; --accent:#ffef00; }
+* { box-sizing:border-box; }
+html,body { margin:0; background:var(--bg); color:var(--fg); font-family:Poppins,system-ui,-apple-system,Arial,sans-serif; }
+.wrap { max-width:1080px; margin:0 auto; padding:14px; display:grid; grid-template-columns:1fr 320px; gap:14px; }
+header { grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between; }
+.h1 { font-weight:800; letter-spacing:.4px; text-shadow:0 0 18px rgba(236,72,72,.35),0 0 2px rgba(255,255,255,.6); }
+.controls-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.sound-btn { border:1px solid var(--brand); background:#000; color:#fff; padding:6px 10px; cursor:pointer; }
+.container { position:relative; width:100%; max-width:520px; }
+.ratio { position:relative; width:100%; aspect-ratio:2 / 3; }
+#game { position:absolute; inset:0; width:100%; height:100%; border:2px solid var(--brand);
+  background: radial-gradient(circle at 50% 20%, rgba(236,72,72,.16), transparent 40%), #000;
+  box-shadow: inset 0 0 28px rgba(236,72,72,.25); touch-action:none; }
+.watermark { position:absolute; right:10px; bottom:10px; width:100px; opacity:.2; pointer-events:none; filter:drop-shadow(0 0 6px rgba(236,72,72,.25)); }
+.badges { display:flex; gap:6px; margin-top:10px; font-size:12px; flex-wrap:wrap; }
+.badge { border:1px solid var(--brand); padding:2px 6px; border-radius:8px; opacity:.9 }
+.side { border:1px solid var(--brand); padding:10px; position:sticky; top:10px; height:fit-content; }
+.side h2 { margin:6px 0 10px; font-size:16px; font-weight:800; }
+ol#scores { margin:0; padding-left:18px; }
+.row { display:flex; justify-content:space-between; gap:10px; font-size:14px; align-items:center; }
+.nick { max-width: 160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.star { color:#EC4848; margin-right:6px; }
+input,button { padding:8px; background:#000; border:1px solid var(--brand); color:#fff; }
+button.save { background:var(--brand); color:#000; font-weight:700; border:none; cursor:pointer; }
+.hint { font-size:12px; opacity:.85; margin-top:6px; }
+.grid-bg { position:fixed; inset:0; pointer-events:none; background:
+  radial-gradient(circle at 50% 50%, rgba(236,72,72,.08), transparent 40%),
+  repeating-linear-gradient(0deg, rgba(236,72,72,.14) 0 1px, transparent 1px 30px),
+  repeating-linear-gradient(90deg, rgba(236,72,72,.14) 0 1px, transparent 1px 30px);
+  animation:pulse 2.6s ease-in-out infinite; z-index:0; }
+@keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:.9} }
+@media (max-width:980px){ .wrap{grid-template-columns:1fr} .side{order:-1} }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrap">
+  <header>
+    <div class="h1">
+      <div style="font-size:22px; line-height:1">UNIKAT — ACID BREAKOUT</div>
+      <small style="opacity:.9;color:#ffd2b1;letter-spacing:.8px">UNITED IN TRANCE</small>
+    </div>
+    <div class="controls-row">
+      <button id="soundBtn" class="sound-btn">🔊 Sound an</button>
+      <span style="font-size:12px;opacity:.8">SPACE: Start • ←/→ • Maus/Touch • P: Pause • R: Restart • Tap/SPACE: Laser</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <div class="ratio">
+        <canvas id="game" width="480" height="720" aria-label="UNIKAT Acid Breakout"></canvas>
+        <img class='watermark' src='data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iRWJlbmVfMSIgZGF0YS1uYW1lPSJFYmVuZSAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDEwODAgMTA4MCI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jbHMtMSB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgICBzdHJva2Utd2lkdGg6IDBweDsKICAgICAgfQogICAgPC9zdHlsZT4KICA8L2RlZnM+CiAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNODk3LjYsNjgwLjJsLTIzLjUtOS43YzcuNy0xOS42LDEzLjctMzkuOSwxNy45LTYwLjhsMS4zLTYuOC0xMTUtMjIuOWMxLjktMTEuMSwyLjktMjIuMiwzLjItMzMuNGgzOS4ydi02LjljMC0xNi4yLTEuNS0zMi4yLTQuMi00Ny45bDI0LjgtNC45YzMuMSwxNy40LDQuNywzNSw0LjcsNTIuOHY2LjloNzhjLS43LDQ2LjEtOS42LDkwLjktMjYuNCwxMzMuNk04MzAuOCw3MjUuNWwtMjEuMS0xNC4xYzguNy0xMy43LDE2LjUtMjguMSwyMy4xLTQzLjFsMjMuMyw5LjdjLTcuMiwxNi40LTE1LjYsMzIuMy0yNS4zLDQ3LjVNNzU2LjUsNzU1LjlsLTQuOSw0LjksNTUuMiw1NS4yYy0zMy4xLDMxLjktNzEuMSw1Ny4zLTExMy4yLDc1LjdsLTkuNy0yMy41YzE5LjMtOC40LDM3LjktMTguNSw1NS43LTMwLjRsNS43LTMuOC02NS4yLTk3LjVjOS4yLTYuNSwxNy43LTEzLjgsMjUuOC0yMS40bDI3LjgsMjcuOCw0LjktNC45YzExLjQtMTEuNCwyMS43LTIzLjgsMzAuOS0zNi44bDIxLDE0Yy0xMC4xLDE0LjUtMjEuNCwyOC4xLTM0LDQwLjdNNjE0LjQsODc2LjRsLTQuOS0yNC45YzE1LjktMy41LDMxLjUtOC4yLDQ2LjgtMTQuMWw5LjcsMjMuM2MtMTYuOCw2LjYtMzQsMTEuOS01MS42LDE1LjdNNTQwLjQsODQ1LjRoLTYuOXY3OGMtNDYuMS0uOC05MC45LTkuNy0xMzMuNi0yNi41bDkuNy0yMy40YzE5LjYsNy43LDM5LjksMTMuNyw2MC44LDE3LjlsNi44LDEuMywyMi45LTExNWMxMSwxLjksMjIuMiwyLjksMzMuNCwzLjJ2MzkuMmg2LjljMTYuMiwwLDMyLjItMS41LDQ3LjktNC4ybDQuOSwyNC44Yy0xNy4zLDMuMS0zNSw0LjctNTIuOCw0LjdNMzU0LjYsODMwLjJsMTQuMS0yMS4xYzEzLjcsOC43LDI4LjEsMTYuNSw0My4xLDIzLjFsLTkuNywyMy4zYy0xNi40LTcuMi0zMi4zLTE1LjYtNDcuNS0yNS4zTTMyNC4yLDc1NS45bC00LjktNC45LTU1LjIsNTUuMmMtMzEuOS0zMy4xLTU3LjMtNzEuMS03NS43LTExMy4ybDIzLjUtOS43YzguNCwxOS4zLDE4LjUsMzcuOSwzMC40LDU1LjdsMy44LDUuNyw5Ny41LTY1LjFjNi41LDkuMiwxMy44LDE3LjcsMjEuNCwyNS44bC0yNy44LDI3LjgsNC45LDQuOWMxMS40LDExLjQsMjMuNywyMS43LDM2LjgsMzAuOWwtMTQuMSwyMWMtMTQuMy0xMC4yLTI4LTIxLjUtNDAuNi0zNC4xTTIwMy43LDYxMy43bDI0LjktNWMzLjUsMTUuOSw4LjIsMzEuNSwxNC4xLDQ2LjhsLTIzLjMsOS43Yy02LjUtMTYuNi0xMS44LTMzLjgtMTUuNy01MS41TTIzNC43LDUzOS43di02LjloLTc4Yy44LTQ2LjEsOS43LTkwLjksMjYuNS0xMzMuNmwyMy40LDkuN2MtNy43LDE5LjYtMTMuNywzOS45LTE3LjksNjAuOGwtMS4zLDYuOCwxMTUsMjIuOWMtMS45LDExLjEtMi45LDIyLjItMy4yLDMzLjRoLTM5LjJ2Ni45YzAsMTYuMiwxLjUsMzIuMiw0LjIsNDcuOWwtMjQuOCw0LjljLTMtMTcuMy00LjctMzQuOS00LjctNTIuOE0yNTAsMzU0bDIxLjEsMTQuMWMtOC43LDEzLjctMTYuNSwyOC4xLTIzLjEsNDMuMWwtMjMuMy05LjdjNy4xLTE2LjQsMTUuNS0zMi4zLDI1LjMtNDcuNU0zMjQuMiwzMjMuNmw0LjktNC45LTU1LjItNTUuMmMzMy4xLTMxLjksNzEuMS01Ny40LDExMy4yLTc1LjdsOS43LDIzLjVjLTE5LjMsOC40LTM3LjksMTguNS01NS43LDMwLjRsLTUuNywzLjgsNjUuMSw5Ny41Yy05LjIsNi41LTE3LjcsMTMuOC0yNS44LDIxLjRsLTI3LjctMjcuOC00LjksNC45Yy0xMS40LDExLjQtMjEuNywyMy44LTMwLjksMzYuOGwtMjEtMTQuMWMxMC4xLTE0LjQsMjEuNC0yOCwzNC00MC42TTQ2Ni40LDIwMy4xbDQuOSwyNC45Yy0xNS45LDMuNS0zMS41LDguMi00Ni44LDE0LjFsLTkuNy0yMy4zYzE2LjgtNi42LDMzLjktMTEuOSw1MS42LTE1LjdNNTQwLjQsMjM0LjFoNi45di03OGM0Ni4xLjgsOTAuOSw5LjcsMTMzLjYsMjYuNWwtOS43LDIzLjRjLTE5LjYtNy43LTM5LjktMTMuNy02MC44LTE3LjlsLTYuOC0xLjMtMjIuOSwxMTVjLTExLTEuOS0yMi4yLTIuOS0zMy40LTMuMnYtMzkuMmgtNi45Yy0xNi4yLDAtMzIuMiwxLjUtNDcuOSw0LjJsLTQuOS0yNC44YzE3LjMtMy4xLDM0LjktNC43LDUyLjgtNC43TTcyNi4xLDI0OS4zbC0xNC4xLDIxLjFjLTEzLjctOC43LTI4LjEtMTYuNS00My4xLTIzLjFsOS43LTIzLjNjMTYuNCw3LjIsMzIuMywxNS42LDQ3LjUsMjUuM003NTYuNSwzMjMuNmw0LjksNC45LDU1LjItNTUuMmMzMS45LDMzLjEsNTcuNCw3MS4xLDc1LjcsMTEzLjJsLTIzLjUsOS43Yy04LjQtMTkuMy0xOC41LTM3LjktMzAuNC01NS42bC0zLjgtNS43LTk3LjUsNjUuMWMtNi41LTkuMi0xMy43LTE3LjctMjEuNC0yNS44bDI3LjgtMjcuOC00LjktNC45Yy0xMS40LTExLjQtMjMuOC0yMS43LTM2LjgtMzAuOWwxNC4xLTIxYzE0LjQsMTAuMSwyOCwyMS40LDQwLjYsMzRNNzk5LjQsNDMyLjVsLTIuNi02LjQtNzIuMywyOS45Yy05LjEtMjAtMjEuMy0zOC4zLTM2LjMtNTQuM2wxNy45LTE3LjljOC42LDkuMSwxNi41LDE5LDIzLjUsMjkuNWwzLjgsNS43LDk3LjQtNjUuMWM5LjcsMTUuMiwxOC4xLDMxLjEsMjUuMyw0Ny41bC0zNiwxNC45LDIuNiw2LjRjNi44LDE2LjUsMTIuMSwzMy40LDE1LjksNTAuNmwtMjQuOCw0LjljLTMuNC0xNS41LTguMi0zMC44LTE0LjQtNDUuN003MDUuOSwzNjQuNGMtOC4xLTcuNi0xNi42LTE0LjktMjUuOC0yMS40bDE0LjEtMjFjMTAuNSw3LjQsMjAuNCwxNS41LDI5LjgsMjQuNGwtMTguMSwxOFpNNTMzLjUsMjk4LjZjLTExLjIuMy0yMi40LDEuNC0zMy40LDMuMmwtNC45LTI0LjhjMTIuNi0yLjIsMjUuNC0zLjUsMzguMy0zLjh2MjUuNFpNNjU3LjMsMjU3LjRjMTYuNSw2LjgsMzIuMiwxNS4xLDQ3LDI0LjVsLTE0LjEsMjFjLTEzLjUtOC41LTI3LjctMTYtNDIuNy0yMi4ybC02LjQtMi42LTI5LjksNzIuM2MtMjAuNi03LjctNDIuMS0xMi02NC4xLTEyLjd2LTI1LjJjMTIuNi40LDI1LjIsMS43LDM3LjUsNC4ybDYuOCwxLjMsMjIuOC0xMTQuOWMxNy43LDMuOSwzNC45LDkuMiw1MS41LDE1LjdsLTE0LjksMzYsNi41LDIuNlpNMzU0LjcsMjQ5LjRjMTUuMi05LjcsMzEuMS0xOC4yLDQ3LjUtMjUuM2wxNC45LDM2LDYuNC0yLjZjMTYuNS02LjgsMzMuNC0xMi4xLDUwLjYtMTUuOWw0LjksMjQuOGMtMTUuNiwzLjUtMzAuOSw4LjMtNDUuOSwxNC41bC02LjQsMi42LDMwLDcyLjNjLTIwLDkuMS0zOC4zLDIxLjMtNTQuMywzNi4zbC0xNy45LTE3LjljOS4xLTguNiwxOS0xNi41LDI5LjUtMjMuNWw1LjctMy44LTY1LTk3LjVaTTMyMi42LDM4NmM3LjQtMTAuNSwxNS41LTIwLjQsMjQuNC0yOS44bDE4LDE4Yy03LjYsOC4xLTE0LjksMTYuNi0yMS40LDI1LjhsLTIxLTE0Wk0yMDMuNyw0NjUuOGMzLjktMTcuNyw5LjItMzQuOSwxNS43LTUxLjVsMzYsMTQuOSwyLjYtNi40YzYuOC0xNi41LDE1LjEtMzIuMiwyNC41LTQ3bDIxLDE0LjFjLTguNSwxMy41LTE2LDI3LjctMjIuMiw0Mi43bC0yLjYsNi40LDcyLjMsMjkuOWMtNy43LDIwLjYtMTIsNDIuMS0xMi43LDY0LjFoLTI1LjNjLjQtMTIuNSwxLjctMjUuMSw0LjItMzcuNWwxLjMtNi44LTExNC44LTIyLjlaTTI3My45LDU0Ni42aDI1LjNjLjMsMTEuMSwxLjQsMjIuMywzLjMsMzMuNGwtMjQuOCw0LjljLTIuMi0xMi42LTMuNS0yNS4zLTMuOC0zOC4zTTM3NC44LDcxNS4xYzguMSw3LjYsMTYuNiwxNC45LDI1LjgsMjEuNGwtMTQsMjFjLTEwLjUtNy40LTIwLjQtMTUuNS0yOS44LTI0LjRsMTgtMThaTTI1OCw2NTYuN2MtNi44LTE2LjUtMTIuMS0zMy40LTE1LjktNTAuNmwyNC44LTQuOWMzLjUsMTUuNiw4LjMsMzAuOSwxNC41LDQ1LjlsMi42LDYuNCw3Mi4zLTI5LjljOS4xLDIwLDIxLjMsMzguMiwzNi4zLDU0LjNsLTE3LjksMTcuOWMtOC42LTkuMS0xNi41LTE5LTIzLjUtMjkuNWwtMy44LTUuNy05Ny40LDY0LjljLTkuNy0xNS4yLTE4LjItMzEuMS0yNS4zLTQ3LjVsMzYtMTQuOS0yLjctNi40Wk01NDcuMyw3ODAuOWMxMS4yLS4zLDIyLjQtMS40LDMzLjQtMy4ybDQuOSwyNC44Yy0xMi42LDIuMi0yNS40LDMuNS0zOC4zLDMuOHYtMjUuNGgwWk00MjMuNCw4MjIuMWMtMTYuNS02LjgtMzIuMi0xNS4xLTQ3LTI0LjVsMTQuMS0yMWMxMy41LDguNSwyNy43LDE2LDQyLjcsMjIuMmw2LjQsMi42LDI5LjktNzIuM2MyMC42LDcuNyw0Mi4xLDEyLDY0LjEsMTIuN3YyNS4yYy0xMi42LS40LTI1LjItMS43LTM3LjUtNC4ybC02LjgtMS4zLTIyLjgsMTE0LjljLTE3LjctMy45LTM0LjktOS4yLTUxLjUtMTUuN2wxNC45LTM2LTYuNS0yLjZaTTcyNi4xLDgzMC4xYy0xNS4yLDkuOC0zMS4xLDE4LjItNDcuNSwyNS4zbC0xNC45LTM2LTYuNCwyLjZjLTE2LjUsNi44LTMzLjQsMTIuMS01MC42LDE1LjlsLTQuOS0yNC44YzE1LjYtMy41LDMwLjktOC4zLDQ1LjktMTQuNWw2LjQtMi42LTI5LjktNzIuM2MyMC05LjEsMzguMy0yMS4zLDU0LjMtMzYuM2wxNy45LDE3LjljLTkuMSw4LjYtMTksMTYuNS0yOS41LDIzLjVsLTUuNywzLjgsNjQuOSw5Ny41Wk03NTguMSw2OTMuNWMtNy40LDEwLjUtMTUuNSwyMC40LTI0LjQsMjkuOGwtMTgtMThjNy43LTguMSwxNC45LTE2LjYsMjEuNC0yNS44bDIxLDE0Wk03NjIuMiw0ODguNmwxLjMsNi44YzIuNSwxMi41LDMuOCwyNSw0LjIsMzcuNWgtMzguOXY2LjljMCwyNC45LTQuOCw0OS4yLTE0LjMsNzIuMWwtMi42LDYuNCw3Mi4xLDI5LjljLTUuMywxMS44LTExLjMsMjMuMS0xOC4yLDM0bC0zMi40LTIxLjYtMy44LDUuN2MtNy4xLDEwLjYtMTQuOSwyMC40LTIzLjUsMjkuNWwtMjcuNS0yNy41LTQuOSw0LjljLTE3LjYsMTcuNi0zOC4xLDMxLjMtNjEuMSw0MC45bC02LjQsMi42LDI5LjksNzIuMWMtMTIuMSw0LjYtMjQuNCw4LjMtMzYuOSwxMS4ybC03LjYtMzguMi02LjgsMS4zYy0xMi4zLDIuNS0yNC45LDMuOC0zNy41LDQuMnYtMzguOWgtNi45Yy0yNC45LDAtNDkuMi00LjgtNzIuMS0xNC4zbC02LjQtMi42LTI5LjksNzEuOGMtMTEuOC01LjMtMjMuMS0xMS40LTM0LTE4LjJsMjEuNi0zMi40LTUuNy0zLjhjLTEwLjYtNy4xLTIwLjQtMTQuOS0yOS41LTIzLjVsMjcuNS0yNy41LTQuOS00LjljLTE3LjYtMTcuNi0zMS4zLTM4LjItNDAuOS02MS4xbC0yLjYtNi40LTcyLjEsMjkuOGMtNC42LTEyLjEtOC4zLTI0LjQtMTEuMi0zNi45bDM4LjItNy42LTEuMy02LjhjLTIuNS0xMi40LTMuOC0yNS00LjItMzcuNWgzOS4xdi02LjljMC0yNC45LDQuOC00OS4yLDE0LjMtNzIuMWwyLjYtNi40LTcyLjEtMjkuOWM1LjItMTEuOCwxMS4zLTIzLjEsMTguMi0zNGwzMi40LDIxLjYsMy44LTUuN2M3LjEtMTAuNiwxNC45LTIwLjQsMjMuNS0yOS41bDI3LjUsMjcuNSw0LjktNC45YzE3LjYtMTcuNiwzOC4yLTMxLjQsNjEuMS00MC45bDYuNC0yLjYtMjkuOS03Mi4xYzEyLjEtNC42LDI0LjQtOC4zLDM2LjktMTEuMmw3LjYsMzguMiw2LjgtMS4zYzEyLjMtMi41LDI0LjktMy44LDM3LjUtNC4ydjM4LjloNi45YzI0LjksMCw0OS4yLDQuOCw3Mi4xLDE0LjNsNi40LDIuNiwyOS45LTcyLjFjMTEuOCw1LjMsMjMuMSwxMS40LDM0LDE4LjJsLTIxLjgsMzIuOCw1LjcsMy44YzEwLjYsNy4xLDIwLjQsMTQuOSwyOS41LDIzLjVsLTI3LjUsMjcuNSw0LjksNC45YzE3LjYsMTcuNiwzMS4zLDM4LjIsNDAuOSw2MS4xbDIuNiw2LjQsNzIuMS0yOS45YzQuNiwxMi4xLDguMywyNC40LDExLjIsMzYuOWwtMzguMiw3LjZaTTg3Nyw2MTMuN2MtMy45LDE3LjctOS4xLDM0LjgtMTUuNyw1MS41bC0zNi0xNC45LTIuNiw2LjRjLTYuOCwxNi41LTE1LjEsMzIuMi0yNC41LDQ3bC0yMS0xNGM4LjUtMTMuNSwxNi0yNy43LDIyLjItNDIuN2wyLjYtNi40LTcyLjMtMjkuOWM3LjctMjAuNiwxMi00Mi4xLDEyLjctNjQuMWgyNS4zYy0uNCwxMi41LTEuNywyNS4xLTQuMiwzNy41bC0xLjMsNi44LDExNC44LDIyLjhaTTgwNi45LDUzMi45aC0yNS40Yy0uMy0xMS4yLTEuNC0yMi4zLTMuMy0zMy40bDI0LjgtNC45YzIuMiwxMi41LDMuNiwyNS4zLDMuOSwzOC4zTTg3Ny4xLDQ2NS44bC0yNC45LDQuOWMtMy41LTE1LjktOC4yLTMxLjUtMTQuMS00Ni44bDIzLjMtOS43YzYuNSwxNi43LDExLjgsMzMuOSwxNS43LDUxLjZNODU5LjcsNTMyLjljLS40LTE2LjQtMi0zMi42LTQuOS00OC42bDM4LjUtNy42LTEuNC02LjhjLTQuMi0yMC45LTEwLjItNDEuMi0xNy45LTYwLjhsMzYuMi0xNS0yLjYtNi40Yy0yMC4xLTQ4LjQtNDkuMS05MS44LTg2LjItMTI4LjlsLTQuOS00LjktNTUuMyw1NS4zYy0xMS44LTExLjMtMjQuNS0yMS42LTM3LjgtMzFsMjEuOC0zMi42LTUuNy0zLjhjLTE3LjctMTEuOS0zNi4zLTIxLjktNTUuNy0zMC40bDE1LTM2LjItNi40LTIuNmMtNDguMy0yMC4xLTk5LjUtMzAuMi0xNTIuMS0zMC4yaC02Ljl2NzguMmMtMTYuNC40LTMyLjYsMi00OC42LDQuOWwtNy42LTM4LjQtNi44LDEuM2MtMjAuOSw0LjItNDEuMiwxMC4yLTYwLjgsMTcuOWwtMTUtMzYuMy02LjQsMi42Yy00OC41LDIwLjEtOTEuOCw0OS4xLTEyOSw4Ni4ybC00LjksNC45LDU1LjMsNTUuM2MtMTEuMywxMS44LTIxLjYsMjQuNS0zMSwzNy44bC0zMi42LTIxLjgtMy44LDUuN2MtMTEuOCwxNy43LTIxLjksMzYuMy0zMC40LDU1LjdsLTM2LjItMTUtMi42LDYuNGMtMjAsNDguNC0zMC4yLDk5LjUtMzAuMiwxNTIuMnY2LjloNzguMmMuNCwxNi40LDIsMzIuNiw0LjksNDguNmwtMzguNSw3LjYsMS40LDYuOGM0LjIsMjAuOSwxMC4yLDQxLjIsMTcuOSw2MC44bC0zNi4zLDE1LDIuNiw2LjRjMjAuMSw0OC41LDQ5LjEsOTEuOCw4Ni4yLDEyOWw0LjksNC45LDU1LjMtNTUuM2MxMS44LDExLjQsMjQuNSwyMS42LDM3LjgsMzFsLTIxLjcsMzIuMyw1LjcsMy44YzE3LjcsMTEuOSwzNi4zLDIxLjksNTUuNywzMC40bC0xNSwzNi4yLDYuNCwyLjZjNDguNCwyMC4xLDk5LjYsMzAuMiwxNTIuMiwzMC4yaDYuOXYtNzguMmMxNi40LS40LDMyLjYtMiw0OC42LTQuOWw3LjcsMzguNSw2LjgtMS4zYzIwLjktNC4yLDQxLjItMTAuMiw2MC44LTE3LjlsMTUsMzYuMiw2LjQtMi42YzQ4LjUtMjAuMSw5MS44LTQ5LjEsMTI5LTg2LjJsNC45LTQuOS01NS4zLTU1LjNjMTEuMy0xMS44LDIxLjYtMjQuNSwzMS0zNy44bDMyLjYsMjEuOCwzLjgtNS43YzExLjgtMTcuNywyMS45LTM2LjMsMzAuNC01NS43bDM2LjIsMTUsMi42LTYuNGMyMC4xLTQ4LjQsMzAuMi05OS42LDMwLjItMTUyLjJ2LTYuOWgtNzguNHYuMloiLz4KPC9zdmc+' alt='UNIKAT'>
+      </div>
+    </div>
+
+    <div class="badges">
+      <div id="badge-expand" class="badge" style="display:none">Paddle+ aktiv</div>
+      <div id="badge-slow" class="badge" style="display:none">Slow aktiv</div>
+      <div id="badge-multi" class="badge" style="display:none">Multi‑Ball</div>
+      <div id="badge-laser" class="badge" style="display:none">Laser aktiv</div>
+      <div id="badge-combo" class="badge" style="display:none">Combo x1</div>
+    </div>
+
+    <div class="controls-row" style="margin-top:10px">
+      <input id="nickname" type="text" maxlength="16" placeholder="Nickname (ACE, LDR, …)" style="flex:1;min-width:160px">
+      <button id="saveBtn" class="save" disabled>Score speichern</button>
+    </div>
+    <div class="hint">Gewinne <b>Gästeliste +1</b>, wenn du den <b>Highscore knackst</b>!</div>
+  </main>
+
+  <aside class="side">
+    <h2>🏆 All‑Time Top 10</h2>
+    <ol id="scores"></ol>
+  </aside>
+</div>
+
+<script>
+(function(){
+  const BRAND="#EC4848", ACCENT="#ffef00";
+  const canvas=document.getElementById('game'); const ctx=canvas.getContext('2d');
+
+  // ==== AUDIO: 303 voice (normal) & hard‑trance combo ====
+  let audioCtx, muted=true;
+  const btn=document.getElementById('soundBtn');
+  function ensureAudio(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }
+  btn.addEventListener('click', ()=>{ muted=!muted; if(!muted) ensureAudio(); btn.textContent = muted? '🔇 Sound aus':'🔊 Sound an'; });
+
+  // Classic 303 "squelch" for normal hits
+  function squelch303(freq=180){
+    if(muted) return; ensureAudio();
+    const o=audioCtx.createOscillator(); o.type='sawtooth';
+    const f=audioCtx.createBiquadFilter(); f.type='lowpass'; f.Q.value=18; // resonant
+    const eg=audioCtx.createGain(); // amp envelope
+    const fm=audioCtx.createGain(); // cutoff envelope amount
+    const dist=audioCtx.createWaveShaper();
+    // mild drive
+    const curve=new Float32Array(2048);
+    for(let i=0;i<curve.length;i++){ const x=i/curve.length*2-1; curve[i]=x*(0.9+0.1*Math.tanh(2*x)); }
+    dist.curve=curve;
+
+    o.connect(f); f.connect(dist); dist.connect(eg); eg.connect(audioCtx.destination);
+    // Filter env: fast attack, short decay -> plucky
+    const now=audioCtx.currentTime;
+    o.frequency.setValueAtTime(freq, now);
+    f.frequency.setValueAtTime(400, now);
+    // emulate 303 env: rise then decay
+    f.frequency.exponentialRampToValueAtTime(2200, now+0.02);
+    f.frequency.exponentialRampToValueAtTime(500, now+0.12);
+
+    eg.gain.setValueAtTime(0.0001, now);
+    eg.gain.exponentialRampToValueAtTime(0.16, now+0.01);
+    eg.gain.exponentialRampToValueAtTime(0.0001, now+0.18);
+
+    o.start(now);
+    o.stop(now+0.2);
+  }
+
+  // Distorted hard-trance 303 for combos/level-up
+  function acidCombo303(root=95){
+    if(muted) return; ensureAudio();
+    const o=audioCtx.createOscillator(); o.type='sawtooth'; o.frequency.setValueAtTime(root, audioCtx.currentTime);
+    const f=audioCtx.createBiquadFilter(); f.type='lowpass'; f.Q.value=22; // high resonance
+    const preGain=audioCtx.createGain(); preGain.gain.value=1.2;
+    const dist=audioCtx.createWaveShaper(); // strong distortion after filter
+    const curve=new Float32Array(44100); const k=120;
+    for(let i=0;i<curve.length;i++){ const x=i/curve.length*2-1; curve[i]=(1+k)*x/(1+k*Math.abs(x)); }
+    dist.curve=curve;
+    const post=audioCtx.createGain(); post.gain.value=0.1;
+
+    // Simple delay for tail
+    const delay=audioCtx.createDelay(); delay.delayTime.value=0.09;
+    const fb=audioCtx.createGain(); fb.gain.value=0.25;
+    delay.connect(fb); fb.connect(delay);
+
+    o.connect(f); f.connect(preGain); preGain.connect(dist); dist.connect(post); post.connect(audioCtx.destination);
+    post.connect(delay); delay.connect(audioCtx.destination);
+
+    const now=audioCtx.currentTime;
+    // 303-style filter sweep (longer)
+    f.frequency.setValueAtTime(300, now);
+    f.frequency.exponentialRampToValueAtTime(2600, now+0.10);
+    f.frequency.exponentialRampToValueAtTime(800,  now+0.45);
+
+    // slight pitch glide up
+    o.frequency.linearRampToValueAtTime(root*1.7, now+0.28);
+    o.frequency.linearRampToValueAtTime(root*1.0, now+0.45);
+
+    o.start(now);
+    o.stop(now+0.5);
+  }
+
+  // ====== LOGO IMAGE ======
+  const logoImg=new Image(); let logoReady=false; logoImg.onload=()=>logoReady=true; logoImg.src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI4LjAuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkViZW5lXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHZpZXdCb3g9IjAgMCA1OTUuMyA4NDEuOSIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgNTk1LjMgODQxLjk7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4KPHN0eWxlIHR5cGU9InRleHQvY3NzIj4KCS5zdDB7ZmlsbDojRkZGRkZGO30KPC9zdHlsZT4KPHBhdGggY2xhc3M9InN0MCIgZD0iTTEwOC45LDMzMlY0ODRIODcuMVYzMzJINjFWNDg0djI2LjFoMjYuMWgyMS44SDEzNVY0ODRWMzMySDEwOC45eiBNMTk2LjYsMzMydjI3LjdMMTQ4LjcsMzMydjIuNXYyMC44djIuN3YyLjUKCVY1MTBoMjYuMVYzNzUuNWwyOS44LDE3LjJoLTh2NzAuNVY1MTBoMjYuMXYtNDYuOXYtNjB2LTIuNVYzNzd2LTIuM1YzMzJIMTk2LjZMMTk2LjYsMzMyeiBNMjM4LjUsMzMydjQ2LjlsLTYuNi0zLjd2Mi4zVjQwMXYyLjUKCWw2LjYsMy45djAuMmw4LDQuNmgtNy44djM0LjF2MzYuNGwtMC4yLDI3LjNoMjYuMXYtMjcuM3YtNjAuNWw2LjksMy45di0yOC40bC02LjktMy45di02Mi4xaC0yNi4xVjMzMnogTTMzMi45LDMzMnY3NC43TDMxMS4xLDM5NAoJVjMzMkgyODV2NDcuMnYyLjNWNDA1djIuNXYxMDIuNmgyNi4xdi04Ny41bDIxLjgsMTIuNmw3LjYsNC40bDAuNSwwLjJoLTh2NzAuM2gyNi4xdi02MHYtMi4zdi0yMy42di0yLjV2LTEuMWwtMTIuNi03LjNsMTIuNi03LjEKCXYtNzQuMmgtMjYuMlYzMzJ6IE0zOTguOCwzOTR2LTM2aDIxLjh2NDguNkwzOTguOCwzOTR6IE0zNzIuNywzMzJWMzU4djIxLjF2Mi4zVjQwNXYyLjV2MTAyLjZoMjYuMXYtODcuNWwyMS44LDEyLjZsNy42LDQuNAoJbDAuNSwwLjJoLTh2NzAuM2gyNnYtNjB2LTIuM3YtMjMuNnYtMi41VjM1OFYzMzJIMzcyLjd6IE00NjAuNCwzMzJWMzU4aDIzLjh2MTUyLjFoMjYuMVYzNThoMjRWMzMySDQ2MC40eiIvPgo8L3N2Zz4K";
+
+  // ====== STATE ======
+  let base, paddle, balls, bricks, powerups, lasers, keysDown, running, paused, waitingLaunch, score, best, lives, tick, level;
+  let expandUntil=0, slowUntil=0, laserUntil=0, laserCooldown=0, levelIntroUntil=0;
+  let comboCount=0, lastHitAt=0, comboToastUntil=0;
+
+  const badgeExpand=document.getElementById('badge-expand');
+  const badgeSlow=document.getElementById('badge-slow');
+  const badgeMulti=document.getElementById('badge-multi');
+  const badgeLaser=document.getElementById('badge-laser');
+  const badgeCombo=document.getElementById('badge-combo');
+
+  function resetDifficulty(){
+    base={ paddleSpeed:9, ballSpeed:5.1, speedGrowthPerHit:0.01, maxBallSpeed:12, rowStart:5, rowAddEvery:1 };
+  }
+  function init(){
+    resetDifficulty(); level=1; score=0; lives=3; best=Number(localStorage.getItem('acid_breakout_best')||0);
+    running=true; paused=false; waitingLaunch=true; tick=0;
+    expandUntil=slowUntil=laserUntil=0; laserCooldown=0; levelIntroUntil=performance.now()+1200;
+    comboCount=0; lastHitAt=0; comboToastUntil=0;
+    paddle={ x:canvas.width/2-55, y:canvas.height-60, w:110, h:14, speed:base.paddleSpeed };
+    balls=[ makeBall() ]; bricks=[]; powerups=[]; lasers=[]; keysDown={};
+    buildLevel(level); loop();
+  }
+  function makeBall(){ return { x:paddle.x+paddle.w/2, y:paddle.y-10, r:7, vx:0, vy:-base.ballSpeed, stuck:true }; }
+
+  // Build bricks with alternating rows of smiley and UNIKAT logo (always visible)
+  function buildLevel(n){
+    bricks=[];
+    const rows=Math.min(base.rowStart + (n-1), 12);
+    const cols=10, pad=6, bw=Math.floor((canvas.width-pad*(cols+1))/cols), bh=22, offY=100;
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const type=(r%2===0)?'smiley':'logo';
+        // Increase HP every 3 levels (logos tougher)
+        const hp = (type==='logo' ? 1 + Math.floor((n-1)/3) : 1);
+        bricks.push({ x:pad+c*(bw+pad), y:offY+r*(bh+pad), w:bw, h:bh, type, hp, alive:true });
+      }
+    }
+    // Slight paddle shrink every 4 levels (min 80)
+    const shrink = Math.max(0, Math.floor((n-1)/4)*6);
+    paddle.w = Math.max(80, 110 - shrink);
+  }
+
+  function nextLevel(){
+    level++; waitingLaunch=true; levelIntroUntil=performance.now()+1200; acidCombo303(95);
+    base.ballSpeed = Math.min(base.maxBallSpeed-1, base.ballSpeed + 0.35);
+    base.paddleSpeed = Math.min(14, (base.paddleSpeed||9) + 0.15);
+    balls=[ makeBall() ]; powerups=[]; lasers=[]; buildLevel(level);
+  }
+
+  function loseLife(){ lives--; if(lives<=0) return gameOver(); balls=[ makeBall() ]; waitingLaunch=true; }
+  function gameOver(){ running=false; paused=false; best=Math.max(best, score); localStorage.setItem('acid_breakout_best', String(best)); document.getElementById('saveBtn').disabled=false; }
+
+  // Input
+  keysDown={};
+  document.addEventListener('keydown', (e)=>{ keysDown[e.key]=true; if(e.key===' '||e.key==='Spacebar'){ if(laserActive()) fireLaser(); else launch(); } if(e.key==='p'||e.key==='P') paused=!paused; if((e.key==='r'||e.key==='R') && !running) restart(); });
+  document.addEventListener('keyup', (e)=>{ keysDown[e.key]=false; });
+  let dragging=false;
+  canvas.addEventListener('pointerdown', (e)=>{ dragging=true; moveTo(e); if(waitingLaunch) launch(); else if(laserActive()) fireLaser(); });
+  canvas.addEventListener('pointermove', (e)=>{ if(dragging) moveTo(e); });
+  window.addEventListener('pointerup', ()=> dragging=false);
+  function moveTo(e){ const r=canvas.getBoundingClientRect(), x=e.clientX-r.left; paddle.x=Math.max(0, Math.min(canvas.width-paddle.w, x-paddle.w/2)); balls.forEach(b=>{ if(b.stuck){ b.x=paddle.x+paddle.w/2; b.y=paddle.y-b.r-1; } }); }
+
+  function launch(){ if(!waitingLaunch) return; waitingLaunch=false; balls.forEach(b=>{ b.stuck=false; const vx=(Math.random()<0.5?-1:1)*(1.8+Math.random()*1.2); b.vx=vx; b.vy=-base.ballSpeed; }); squelch303(170+Math.random()*40); }
+
+  function spawnPower(x,y){ if(Math.random()>0.28) return; const types=['expand','multi','slow','life','laser']; const t=types[Math.floor(Math.random()*types.length)]; powerups.push({ x, y, vy:2.1, w:18, h:18, type:t }); }
+  function applyPower(t){ if(t==='expand'){ paddle.w=Math.min(200, paddle.w+60); expandUntil=performance.now()+12000; badgeExpand.style.display=''; } else if(t==='multi'){ const clones=[]; balls.forEach(b=>{ clones.push({ x:b.x,y:b.y,r:b.r,vx:-b.vx,vy:b.vy*1.02,stuck:false }); }); balls=balls.concat(clones).slice(0,4); badgeMulti.style.display=''; setTimeout(()=>badgeMulti.style.display='none', 2500); } else if(t==='slow'){ balls.forEach(b=>{ b.vx*=0.7; b.vy*=0.7; }); slowUntil=performance.now()+9000; badgeSlow.style.display=''; } else if(t==='life'){ lives=Math.min(7, lives+1); } else if(t==='laser'){ laserUntil=performance.now()+10000; badgeLaser.style.display=''; } }
+  function laserActive(){ return laserUntil && performance.now() < laserUntil; }
+  function fireLaser(){ const now=performance.now(); if(!laserActive() || now<laserCooldown) return; laserCooldown = now + 220; lasers.push({ x:paddle.x+paddle.w/2, y:paddle.y-6, w:4, h:14, speed:10 }); }
+
+  function update(){
+    if(!running||paused) return; tick++;
+    const now = performance.now();
+    if (expandUntil && now>expandUntil){ paddle.w = Math.max(110, paddle.w - 2); if(paddle.w<=110){ expandUntil=0; badgeExpand.style.display='none'; } }
+    if (slowUntil && now>slowUntil){ balls.forEach(b=>{ b.vx*=1.03; b.vy*=1.03; }); const avg=balls.reduce((s,b)=>s+Math.hypot(b.vx,b.vy),0)/balls.length; if(avg>=base.ballSpeed){ slowUntil=0; badgeSlow.style.display='none'; } }
+    if (laserUntil && now>laserUntil){ laserUntil=0; badgeLaser.style.display='none'; }
+    if(keysDown['ArrowLeft']||keysDown['a']||keysDown['A']) paddle.x=Math.max(0, paddle.x - (base.paddleSpeed||9));
+    if(keysDown['ArrowRight']||keysDown['d']||keysDown['D']) paddle.x=Math.min(canvas.width - paddle.w, paddle.x + (base.paddleSpeed||9));
+    if(waitingLaunch){ balls.forEach(b=>{ b.x=paddle.x+paddle.w/2; b.y=paddle.y-b.r-1; }); return; }
+
+    lasers.forEach(L=> L.y -= L.speed);
+    bricks.forEach(br=>{ if(!br.alive) return; lasers.forEach(L=>{ if(L.x>=br.x && L.x<=br.x+br.w && L.y<=br.y+br.h && L.y+L.h>=br.y){ br.hp--; if(br.hp<=0){ br.alive=false; score+=(br.type==='logo'?40:12); spawnPower(br.x+br.w/2, br.y+br.h/2); onBrickHit(); } } }); });
+    lasers = lasers.filter(L => L.y + L.h > 80);
+
+    balls.forEach(b=>{
+      b.x+=b.vx; b.y+=b.vy;
+      if(b.x - b.r <= 0){ b.x=b.r; b.vx*=-1; }
+      if(b.x + b.r >= canvas.width){ b.x=canvas.width-b.r; b.vx*=-1; }
+      if(b.y - b.r <= 80){ b.y=80+b.r; b.vy*=-1; }
+      if(b.y - b.r > canvas.height){ b._dead=true; }
+      if(b.vy>0 && b.y + b.r >= paddle.y && b.y - b.r <= paddle.y + paddle.h && b.x >= paddle.x && b.x <= paddle.x+paddle.w){
+        const rel=(b.x-(paddle.x+paddle.w/2))/(paddle.w/2); const ang=rel*(Math.PI/3); const speed=Math.min(base.maxBallSpeed, Math.hypot(b.vx,b.vy)*1.02);
+        b.vx=speed*Math.sin(ang); b.vy=-Math.abs(speed*Math.cos(ang)); b.y=paddle.y-b.r-1;
+      }
+    });
+    balls = balls.filter(b=>!b._dead);
+    if(balls.length===0) return loseLife();
+
+    outer: for(const b of balls){
+      for(const br of bricks){
+        if(!br.alive) continue;
+        if(b.x + b.r > br.x && b.x - b.r < br.x + br.w && b.y + b.r > br.y && b.y - b.r < br.y + br.h){
+          const dx=(br.x+br.w/2)-b.x, dy=(br.y+br.h/2)-b.y;
+          if(Math.abs(dx)>Math.abs(dy)) b.vy*=-1; else b.vx*=-1;
+          br.hp--; if(br.hp<=0){ br.alive=false; score+=(br.type==='logo'?40:12); spawnPower(br.x+br.w/2, br.y+br.h/2); onBrickHit(); }
+          const sp=Math.hypot(b.vx,b.vy)*(1+base.speedGrowthPerHit);
+          const a=Math.atan2(b.vy,b.vx); const mag=Math.min(base.maxBallSpeed, sp);
+          b.vx=Math.cos(a)*mag; b.vy=Math.sin(a)*mag;
+          // normal 303 blip on brick hit
+          squelch303(150+Math.random()*80);
+          break outer;
+        }
+      }
+    }
+
+    powerups.forEach(p=> p.y += p.vy);
+    powerups = powerups.filter(p=>{ if(p.y>canvas.height) return false; if(p.y + p.h >= paddle.y && p.y <= paddle.y+paddle.h && p.x >= paddle.x && p.x <= paddle.x+paddle.w){ applyPower(p.type); return false; } return true; });
+
+    if(bricks.every(br => !br.alive)) nextLevel();
+    if(score>best){ best=score; localStorage.setItem('acid_breakout_best', String(best)); }
+  }
+
+  function onBrickHit(){
+    const now = performance.now();
+    if(now - lastHitAt < 1500){ comboCount++; } else { comboCount=1; }
+    lastHitAt = now;
+    const bonus = (comboCount>=2) ? Math.min(60, 6*comboCount) : 0;
+    if(bonus){ score += bonus; comboToastUntil = now + 900; badgeCombo.style.display=''; badgeCombo.textContent = 'Combo x'+comboCount+' (+'+bonus+')'; setTimeout(()=>{ if(performance.now()>comboToastUntil) badgeCombo.style.display='none'; }, 1000); }
+    if(comboCount>=4) acidCombo303(95);
+  }
+
+  function drawBG(){
+    ctx.fillStyle = '#0b0806'; ctx.fillRect(0,0,canvas.width,80);
+    const grd = ctx.createLinearGradient(0,0,0,80); grd.addColorStop(0,'rgba(236,72,72,0.35)'); grd.addColorStop(1,'rgba(236,72,72,0)'); ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width,80);
+    ctx.save(); ctx.globalAlpha=.18; ctx.strokeStyle=BRAND;
+    for(let x=0;x<canvas.width;x+=30){ ctx.beginPath(); ctx.moveTo(x,80); ctx.lineTo(x,canvas.height); ctx.stroke(); }
+    for(let y=80;y<canvas.height;y+=30){ ctx.beginPath(); ctx.MoveTo?ctx.moveTo(0,y):ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+    ctx.restore();
+  }
+  function drawHUD(){
+    ctx.fillStyle='#fff'; ctx.font='800 18px Poppins, sans-serif'; ctx.fillText('UNIKAT', 12, 28);
+    ctx.fillStyle='#ffd2b1'; ctx.font='600 12px Poppins, sans-serif'; ctx.fillText('UNITED IN TRANCE', 12, 46);
+    ctx.fillStyle='#fff'; ctx.font='bold 16px Poppins, sans-serif';
+    ctx.fillText('Score: '+score, canvas.width - 300, 26);
+    ctx.fillText('Level: '+level, canvas.width - 180, 26);
+    ctx.fillText('Lives: '+lives, canvas.width - 90, 26);
+    if(levelIntroUntil && performance.now() < levelIntroUntil){ ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='rgba(236,72,72,0.9)'; ctx.font='800 36px Poppins, sans-serif'; ctx.fillText('LEVEL '+level, canvas.width/2 - 90, canvas.height/2); }
+    if(comboToastUntil && performance.now() < comboToastUntil){ ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(0,canvas.height-90,canvas.width,90); ctx.fillStyle=ACCENT; ctx.font='800 22px Poppins, sans-serif'; ctx.fillText('ACID COMBO x'+comboCount, 20, canvas.height-50); }
+  }
+  function drawPaddle(){ ctx.fillStyle=BRAND; ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h); ctx.strokeStyle='rgba(236,72,72,0.55)'; ctx.lineWidth=2; ctx.strokeRect(paddle.x-1, paddle.y-1, paddle.w+2, paddle.h+2); }
+  function drawBall(b){ ctx.fillStyle=ACCENT; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.arc(b.x-2,b.y-2,b.r/3,0,Math.PI*2); ctx.fill(); }
+  function drawBrick(br){
+    if(!br.alive) return;
+    if(br.type==='smiley'){
+      ctx.fillStyle=ACCENT; ctx.fillRect(br.x, br.y, br.w, br.h);
+      ctx.fillStyle='#000'; ctx.fillRect(br.x+br.w*0.25, br.y+5, 3, 6); ctx.fillRect(br.x+br.w*0.75-3, br.y+5, 3, 6);
+      ctx.beginPath(); ctx.arc(br.x+br.w/2, br.y+br.h-6, 10, 0.15*Math.PI, 0.85*Math.PI); ctx.lineWidth=2; ctx.strokeStyle='#000'; ctx.stroke();
+    } else {
+      // logo brick: stroke + image
+      ctx.strokeStyle=BRAND; ctx.strokeRect(br.x+1, br.y+1, br.w-2, br.h-2);
+      if(logoReady){
+        const ratio=0.2, h=br.h*0.86, w=h/ratio, cx=br.x+br.w/2, cy=br.y+br.h/2, drawW=Math.min(w, br.w*0.88), drawH=drawW*ratio;
+        ctx.drawImage(logoImg, cx-drawW/2, cy-drawH/2, drawW, drawH);
+      } else {
+        ctx.fillStyle=BRAND; ctx.font='bold 10px Poppins, sans-serif'; ctx.fillText('UNIKAT', br.x+6, br.y+br.h-6);
+      }
+      if (br.hp>1){ ctx.fillStyle='rgba(236,72,72,0.22)'; ctx.fillRect(br.x, br.y, br.w, br.h); }
+    }
+  }
+  function drawPower(p){ ctx.fillStyle=BRAND; ctx.fillRect(p.x-9, p.y-9, 18, 18); ctx.fillStyle='#000'; ctx.font='bold 11px Poppins, sans-serif'; const label = p.type==='expand'?'+': p.type==='multi'?'×2': p.type==='slow'?'–': p.type==='laser'?'⚡':'♥'; ctx.fillText(label, p.x-6, p.y+4); }
+  function drawLasers(){ ctx.fillStyle=BRAND; lasers.forEach(L=> ctx.fillRect(L.x-1, L.y, 2, L.h*2)); }
+  function drawOverlays(){
+    if(!running){ ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle=BRAND; ctx.font='bold 34px Poppins, sans-serif'; ctx.fillText('GAME OVER', canvas.width/2 - 110, canvas.height/2 - 10); ctx.fillStyle='#fff'; ctx.font='bold 18px Poppins, sans-serif'; ctx.fillText('Score: '+score+'   Best: '+best, canvas.width/2 - 110, canvas.height/2 + 20); ctx.font='16px Poppins, sans-serif'; ctx.fillText('R = Neustart  •  Nick eingeben & speichern für Highscore', canvas.width/2 - 210, canvas.height/2 + 46); }
+    else if(paused){ ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle=BRAND; ctx.font='bold 28px Poppins, sans-serif'; ctx.fillText('PAUSE', canvas.width/2 - 50, canvas.height/2); }
+    else if(waitingLaunch){ ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='rgba(236,72,72,0.95)'; ctx.font='bold 20px Poppins, sans-serif'; ctx.fillText('SPACE oder Tippen: Launch!', canvas.width/2 - 130, canvas.height/2); }
+  }
+  function draw(){ ctx.clearRect(0,0,canvas.width,canvas.height); drawBG(); drawHUD(); drawPaddle(); drawLasers(); balls.forEach(drawBall); bricks.forEach(drawBrick); powerups.forEach(drawPower); drawOverlays(); }
+  function loop(){ if(running && !paused) update(); draw(); requestAnimationFrame(loop); }
+  function restart(){ init(); }
+
+  // Local fallback leaderboard
+  const listEl=document.getElementById('scores');
+  function renderLocalTop(){ listEl.innerHTML=''; const nick=localStorage.getItem('acid_breakout_nick')||'anon'; const best=Number(localStorage.getItem('acid_breakout_best')||0); if(best>0){ const li=document.createElement('li'); li.innerHTML='<div class="row"><span class="star">⭐</span><span class="nick">'+nick+'</span><strong>'+best+'</strong></div>'; listEl.appendChild(li);} }
+  window.saveScore=function(score){ const nick=(document.getElementById('nickname').value||'anon').trim().slice(0,16); localStorage.setItem('acid_breakout_nick', nick); const bestOld=Number(localStorage.getItem('acid_breakout_best')||0); if(score>bestOld) localStorage.setItem('acid_breakout_best', String(score)); renderLocalTop(); };
+
+  document.getElementById('saveBtn').addEventListener('click', ()=>{ if(running) return; window.saveScore(score); });
+
+  renderLocalTop(); init();
+})();
+</script>
+</body>
+</html>
