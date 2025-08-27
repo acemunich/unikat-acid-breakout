@@ -162,7 +162,7 @@ function acidCombo303(root=95){
   const dist=audioCtx.createWaveShaper(); const curve=new Float32Array(44100); const k=80;
   for(let i=0;i<curve.length;i++){ const x=i/curve.length*2-1; curve[i]=(1+k)*x/(1+k*Math.abs(x)); }
   dist.curve=curve;
-  const post=audioCtx.createGain(); post.gain.value=0.05; // deutlich leiser
+  const post=audioCtx.createGain(); post.gain.value=0.05;
   const delay=audioCtx.createDelay(); delay.delayTime.value=0.08;
   const fb=audioCtx.createGain(); fb.gain.value=0.18;
   delay.connect(fb); fb.connect(delay);
@@ -187,6 +187,7 @@ let expandUntil=0, slowUntil=0, laserUntil=0, laserCooldown=0, levelIntroUntil=0
 let comboCount=0, lastHitAt=0, comboToastUntil=0;
 let lastSavedCode = "";
 
+// Badges
 const badgeExpand=document.getElementById('badge-expand');
 const badgeSlow=document.getElementById('badge-slow');
 const badgeMulti=document.getElementById('badge-multi');
@@ -194,7 +195,11 @@ const badgeLaser=document.getElementById('badge-laser');
 const badgeCombo=document.getElementById('badge-combo');
 
 function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
-function escapeHTML(s){ return (s||"").replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]); }
+function escapeHTML(s){
+  return (s||"").replace(/[&<>\"']/g, m => (
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])
+  ));
+}
 function shortCode(nick){
   nick = (nick||"anon").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4) || "ANON";
   const rnd = Math.floor(10000 + Math.random()*90000);
@@ -254,8 +259,8 @@ function launch(){ if(!waitingLaunch) return; waitingLaunch=false; balls.forEach
 
 // Powerups (Extra-Leben seltener)
 function spawnPower(x,y){
-  if(Math.random()>0.26) return; // Gesamt-Dropchance
-  const bag = ['expand','expand','multi','slow','slow','laser','laser','life']; // life ~12.5%
+  if(Math.random()>0.26) return;
+  const bag = ['expand','expand','multi','slow','slow','laser','laser','life']; // life seltener
   const t = bag[Math.floor(Math.random()*bag.length)];
   powerups.push({ x, y, vy:2.1, w:18, h:18, type:t });
 }
@@ -359,7 +364,6 @@ function drawHUD(){
 }
 function drawPaddle(){ ctx.fillStyle=BRAND; ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h); ctx.strokeStyle='rgba(236,72,72,0.55)'; ctx.lineWidth=2; ctx.strokeRect(paddle.x-1, paddle.y-1, paddle.w+2, paddle.h+2); }
 function drawBall(b){ ctx.fillStyle=ACCENT; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.arc(b.x-2,b.y-2,b.r/3,0,Math.PI*2); ctx.fill(); }
-
 function drawBrick(br){
   if(!br.alive) return;
   if(br.type==='smiley'){
@@ -367,7 +371,6 @@ function drawBrick(br){
     ctx.fillStyle='#000'; ctx.fillRect(br.x+br.w*0.25, br.y+5, 3, 6); ctx.fillRect(br.x+br.w*0.75-3, br.y+5, 3, 6);
     ctx.beginPath(); ctx.arc(br.x+br.w/2, br.y+br.h-6, 10, 0.15*Math.PI, 0.85*Math.PI); ctx.lineWidth=2; ctx.strokeStyle='#000'; ctx.stroke();
   } else {
-    // UNIKAT-Schriftzug größer (breitenbasiert ~88%)
     ctx.strokeStyle=BRAND; ctx.strokeRect(br.x+1, br.y+1, br.w-2, br.h-2);
     const drawW = br.w * 0.88; const ratio = 0.2; const drawH = drawW * ratio;
     const cx = br.x + br.w/2, cy = br.y + br.h/2;
@@ -392,7 +395,7 @@ function draw(){ ctx.clearRect(0,0,canvas.width,canvas.height); drawBG(); drawHU
 function loop(){ if(running && !paused) update(); draw(); requestAnimationFrame(loop); }
 function restart(){ init(); }
 
-// Leaderboard: render + Firebase/Local
+// Leaderboard
 const listEl=document.getElementById('scores');
 function renderLocalTop(){
   listEl.innerHTML = "";
@@ -433,7 +436,7 @@ async function refreshLeaderboard(){
   renderLocalTop();
 }
 
-// Score speichern (inkl. Score-Code)
+// Score speichern
 const saveBtn = document.getElementById("saveBtn");
 const nicknameInput = document.getElementById("nickname");
 saveBtn.addEventListener("click", async ()=>{
@@ -441,7 +444,6 @@ saveBtn.addEventListener("click", async ()=>{
   const nick = (nicknameInput.value||"anon").trim().slice(0,16) || "anon";
   const code = shortCode(nick);
   lastSavedCode = code;
-  // Cloud
   if(FB.ok){
     try{
       await FB.addDoc(FB.collection(FB.db, "scores"), {
@@ -449,7 +451,6 @@ saveBtn.addEventListener("click", async ()=>{
       });
     } catch(e){ alert("Konnte Score nicht speichern."); console.error(e); }
   }
-  // Local Fallback
   localStorage.setItem("acid_breakout_nick", nick);
   localStorage.setItem("acid_breakout_code", code);
   const bestOld = Number(localStorage.getItem("acid_breakout_best")||0);
@@ -457,9 +458,6 @@ saveBtn.addEventListener("click", async ()=>{
   nicknameInput.value = nick;
   refreshLeaderboard();
 });
-
-// Enable Save-Button nach Game Over
-function enableSave(){ document.getElementById('saveBtn').disabled=false; }
 
 refreshLeaderboard();
 init();
